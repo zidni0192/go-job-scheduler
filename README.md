@@ -1,21 +1,32 @@
 # go-job-scheduler
 
-# go-job-scheduler
+An in-memory Go queue for accepting and claiming jobs. The scheduler stores
+opaque payload bytes, returns jobs in FIFO order, and rejects duplicate IDs.
 
-Start week: 10.
+## Use
 
-## Required deliverables
-- English README and architecture overview
-- Reproducible local setup without Docker
-- Tests and CI
-- Meaningful demo and issue-based PR history
+Create a queue, enqueue a job with a non-empty ID and non-nil payload, then
+claim the next available job:
 
-## Suggested first issues
-1. Bootstrap repo, quality tooling, CI.
-2. Implement a minimal end-to-end vertical slice.
-3. Add integration and failure tests.
-4. Write usage docs, demo and release.
+```go
+queue := scheduler.NewQueue()
+err := queue.Enqueue(scheduler.Job{ID: "email-1", Payload: []byte("hello")})
+if err != nil {
+	// Handle an empty ID, nil payload, or duplicate ID.
+}
+job := queue.Claim() // nil when no jobs are available
+```
 
-Define project-specific acceptance criteria before coding.
+Claimed jobs are removed from the in-memory queue. This issue does not provide
+acknowledgement, requeue, persistence, retries, or distributed coordination.
 
-Development and tests are local-first; Docker, live services, and production credentials are not required.
+## Development
+
+Requires Go 1.27 or newer. Run `go test ./...` or `bash scripts/check.sh`.
+No Docker, external services, or production credentials are needed.
+
+## Architecture
+
+`Queue` protects its FIFO pending-ID list and job map with a mutex. Enqueue
+copies payload bytes; Claim removes the first pending job and returns its own
+payload copy. The queue is process-local and does not persist data.
